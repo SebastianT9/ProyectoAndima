@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Andima | Logística</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        /* Estilos móviles para el Repartidor */
+        body {
+            display: block !important;
+            height: auto !important;
+            padding: 20px;
+            background-color: #0f172a;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 15px;
+            flex-wrap: wrap; /* Permite que baje de línea si no cabe */
+        }
+
+        h1 { font-size: 1.5rem; color: #fff; }
+
+        .order-card {
+            background-color: rgba(30, 41, 59, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: white;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .ticket-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: #f59e0b;
+            color: #000;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .info-row { margin-bottom: 10px; }
+        .label { color: #94a3b8; font-size: 0.85rem; display: block; }
+        .value { font-size: 1.1rem; font-weight: 500; }
+        .address { color: #34d399; font-weight: bold; font-size: 1.2rem; }
+
+        .btn-deliver {
+            width: 100%;
+            background: #34d399;
+            color: #064e3b;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-deliver:hover { background: #10b981; }
+
+        .empty-state {
+            text-align: center;
+            color: #64748b;
+            margin-top: 50px;
+        }
+
+        /* --- RESPONSIVE REPARTIDOR --- */
+        @media screen and (max-width: 400px) {
+            .header h1 { font-size: 1.2rem; }
+            .ticket-badge { 
+                position: static; /* Deja de flotar si la pantalla es muy chica */
+                display: inline-block;
+                margin-bottom: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🚚 Ruta de Entrega</h1>
+        <a href="/" style="color: #ef4444; text-decoration: none;">Salir</a>
+    </div>
+
+    <div id="listaPedidos">
+        <p class="empty-state">Buscando pedidos pendientes...</p>
+    </div>
+
+    <script>
+        async function cargarPedidos() {
+            const contenedor = document.getElementById('listaPedidos');
+            
+            try {
+                const response = await fetch('/api/pedidos/pendientes');
+                const pedidos = await response.json();
+
+                contenedor.innerHTML = ''; 
+
+                if (pedidos.length === 0) {
+                    contenedor.innerHTML = `
+                        <div class="empty-state">
+                            <h3>¡Todo entregado! ✅</h3>
+                            <p>No hay pedidos pendientes por ahora.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                pedidos.forEach(p => {
+                    const tarjeta = `
+                        <div class="order-card">
+                            <span class="ticket-badge">${p.codigo}</span>
+                            
+                            <div class="info-row">
+                                <span class="label">Cliente</span>
+                                <span class="value">${p.cliente}</span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="label">Dirección de Entrega</span>
+                                <span class="value address">${p.direccion}</span>
+                            </div>
+
+                            <div class="info-row">
+                                <span class="label">Total a Cobrar</span>
+                                <span class="value">$${p.total.toFixed(2)}</span>
+                            </div>
+
+                            <button class="btn-deliver" onclick="confirmarEntrega('${p._id}')">
+                                ✅ Confirmar Entrega
+                            </button>
+                        </div>
+                    `;
+                    contenedor.innerHTML += tarjeta;
+                });
+
+            } catch (error) {
+                console.error(error);
+                contenedor.innerHTML = '<p style="color:red">Error de conexión</p>';
+            }
+        }
+
+        async function confirmarEntrega(id) {
+            if (confirm("¿Confirmas que has entregado este pedido?")) {
+                const response = await fetch('/api/pedidos/entregar', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+
+                if ((await response.json()).success) {
+                    alert("Entrega registrada con éxito 🚀");
+                    cargarPedidos(); 
+                } else {
+                    alert("Error al registrar entrega");
+                }
+            }
+        }
+
+        cargarPedidos();
+        setInterval(cargarPedidos, 10000);
+    </script>
+</body>
+</html>
